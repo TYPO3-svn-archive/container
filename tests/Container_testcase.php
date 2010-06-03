@@ -1,6 +1,6 @@
 <?php
 
-include(dirname(__FILE__).'/TestClasses.php');
+include_once(dirname(__FILE__).'/TestClasses.php');
 
 
 /**
@@ -8,7 +8,7 @@ include(dirname(__FILE__).'/TestClasses.php');
  * 
  * @author Daniel Pötzinger
  */
-class tx_container_container_testcase extends tx_phpunit_testcase {
+class Tx_Container_Tests_Container_testcase extends tx_phpunit_testcase {
 	
 	private $container;
 	
@@ -114,7 +114,11 @@ class tx_container_container_testcase extends tx_phpunit_testcase {
 		$GLOBALS['TYPO3_CONF_VARS']['EXT']['extConf']['container']=$backup;	
 	}
 	
-	
+	public function test_canBuildCyclicDependenciesWithSetter() {
+		$o = $this->container->getInstance('tx_container_tests_resolveablecyclic1');	
+		$this->assertType('tx_container_tests_resolveablecyclic1', $o);	
+		$this->assertType('tx_container_tests_resolveablecyclic1', $o->o->o);		
+	}
 	
 	
 	

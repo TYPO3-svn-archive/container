@@ -75,6 +75,14 @@ interface tx_container_tests_someinterface {
  */
 class tx_container_tests_someimplementation implements tx_container_tests_someinterface {	
 }
+
+/**
+ * test class B-Child that extends Class B (therfore depends also on Class C)
+ *
+ */
+class tx_container_tests_b_child_someimplementation extends tx_container_tests_b implements tx_container_tests_someinterface {	
+}
+
 /**
  * class which depends on a Interface
  *
@@ -132,3 +140,27 @@ class tx_container_tests_injectsettings {
 		$this->settings = $settings;
 	}		
 }
+
+/**
+ * 
+ *
+ */
+class tx_container_tests_resolveablecyclic1 implements t3lib_Singleton {
+	public $o;
+	public function __construct(tx_container_tests_resolveablecyclic2 $cyclic2) {
+		$this->o = $cyclic2;
+	}			
+}
+
+/**
+ * 
+ *
+ */
+class tx_container_tests_resolveablecyclic2 {
+	public $o;
+	public function injectCyclic1(tx_container_tests_resolveablecyclic1 $o) {
+		$this->o = $o;
+	}		
+}
+
+

@@ -44,18 +44,31 @@ class Tx_Container_Classinfo {
 	private $extensionKey;
 	
 	/**
+	 * @var array
+	 */
+	private $parents;
+	
+	/**
+	 * 
+	 * @var boolean
+	 */
+	private $isSingleton;
+	
+	/**
 	 * 
 	 * @param string $className
 	 * @param array $constructorDependencies
 	 * @param array $setterDependencies
 	 * @param boolean if the class has a method "injectExtensionSettings"
 	 */
-	public function __construct($className, $extensionKey, array $constructorDependencies, array $setterDependencies, $hasInjectExtensionSettingsMethod=FALSE) {
+	public function __construct($className, $extensionKey, array $constructorDependencies, array $setterDependencies, $hasInjectExtensionSettingsMethod=FALSE, array $parents=array(), $isSingleton=FALSE) {
 		$this->className = $className;
 		$this->setterDependencies = $setterDependencies;
 		$this->constructorDependencies = $constructorDependencies;
 		$this->extensionKey = $extensionKey;
 		$this->hasInjectExtensionSettingsMethod=$hasInjectExtensionSettingsMethod;
+		$this->parents=$parents;
+		$this->isSingleton = $isSingleton;
 	}
 	
 	/**
@@ -80,6 +93,13 @@ class Tx_Container_Classinfo {
 	}
 	
 	/**
+	 * @return the $setterDependencies
+	 */
+	public function hasSetterDependencies() {
+		return (count($this->setterDependencies) > 0);
+	}
+	
+	/**
 	 * @return the $extensionKey
 	 */
 	public function getExtensionKey() {
@@ -93,6 +113,18 @@ class Tx_Container_Classinfo {
 		return $this->hasInjectExtensionSettingsMethod;
 	}
 
-	
+	/**
+	 * @return the $parents
+	 */
+	public function getParents() {
+		return $this->parents;
+	}
+
+	/**
+	 * @return the $isSingleton
+	 */
+	public function getIsSingleton() {
+		return $this->isSingleton;
+	}
 	
 }

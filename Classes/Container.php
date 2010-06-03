@@ -4,6 +4,8 @@ require_once ( t3lib_extMgm::extPath('container') . 'Classes/ClassInfoFactory.ph
 
 /**
  * TYPO3 Dependency Injection container
+ * Initial Usage:
+ *  $container = Tx_Container_Container::getContainer()
  * 
  * @author Daniel Pötzinger
  */
@@ -15,25 +17,13 @@ class Tx_Container_Container {
 	 * @var tx_container_container
 	 */
 	static private $containerInstance = null; 
-	
-	/**
-	 * Returns an instance of the container singleton.
-	 * 
-	 * @return Tx_Container_Container
-	 */
-    static public function getContainer() {
-         if (null === self::$containerInstance) {
-             self::$containerInstance = new self;
-         }
-         return self::$containerInstance;
-     } 
      
      /**
       * internal cache for classinfos
       * 
-      * @var array
+      * @var Tx_Container_ClassInfoCache
       */
-     private $level1ClassInfoCache=array();
+     private $cache;
      
      /**
       * registered alternative implementations of a class
@@ -53,8 +43,14 @@ class Tx_Container_Container {
 	 * holds references of singletons
 	 * @var array
 	 */ 
-	private $instances = array();
-     
+	private $singletonInstances = array();
+	
+	/**
+	 * holds references of objects that still needs setter injection processing
+	 * @var array
+	 */ 
+	private $setterInjectionRegistry = array();
+	
 	
 	/**
 	 * Constructor is protected since container should
@@ -65,8 +61,21 @@ class Tx_Container_Container {
 	 * @return void
 	 */
     protected function __construct() {
-     	$this->classInfoFactory = new tx_container_classinfofactory();
+     	$this->classInfoFactory = new Tx_Container_ClassInfoFactory();
+     	$this->cache = new Tx_Container_ClassInfoCache();
     }
+    
+    /**
+	 * Returns an instance of the container singleton.
+	 * 
+	 * @return Tx_Container_Container
+	 */
+    static public function getContainer() {
+         if (null === self::$containerInstance) {
+             self::$containerInstance = new self;
+         }
+         return self::$containerInstance;
+     } 
      
     private function __clone() {}
 		
@@ -75,14 +84,15 @@ class Tx_Container_Container {
 	 * @param string $className
 	 * @return object
 	 */
-	public function getInstance($className) {	
+	public function getInstance($className) {
 		$givenConstructorArguments=array();
 		if (func_num_args() > 1) {
 				$givenConstructorArguments = func_get_args();
 				array_shift($givenConstructorArguments);
-		}	
-
-		return $this->getInstanceFromClassName($className,  $givenConstructorArguments, 0);		
+		}
+		$object = $this->getInstanceFromClassName($className,  $givenConstructorArguments, 0);
+		$this->processSetterInjectionRegistry();
+		return $object;					
 	}
 	
 	/**
@@ -102,35 +112,34 @@ class Tx_Container_Container {
 	 * @param string $className
 	 * @param array $givenConstructorArguments
 	 */
-	protected function getInstanceFromClassName($className, array $givenConstructorArguments=array(), $level=0) {
+	private function getInstanceFromClassName($className, array $givenConstructorArguments=array(), $level=0) {
 		if ($level > 30) {
 			throw new Exception('level too big - cyclomatic dependency? '.$className);
-		}
-			// Get final classname
-		$className = self::getClassName($className);
-		
+		}		
 		if ($className == 'Tx_Container_Container') {
 			return $this;
+		}		
+		if (isset($this->singletonInstances[$className])) {
+			return $this->singletonInstances[$className];
 		}
 		
-		if (isset($this->instances[$className])) {
-			return $this->instances[$className]; // it's a singleton, get the existing instance
-		} 
-	
-		$requiredConstructorArguments = $this->getClassInfo($className)->getConstructorDependencies();	
+		$className = self::getClassName($className);
+		$classInfo = $this->getClassInfo($className);
+		
+		$requiredConstructorArguments = $classInfo->getConstructorDependencies();
 		$constructorArguments = $this->getConstructorArguments($requiredConstructorArguments, $givenConstructorArguments,$level);
-		$instance = $this->newObject($className, $constructorArguments);			
-		$this->handleSetterInjection($instance, $this->getClassInfo($className)->getSetterDependencies());
-		if ($this->getClassInfo($className)->hasInjectExtensionSettingsMethod() && $this->getClassInfo($className)->getExtensionKey()) {
-			$instance->injectExtensionSettings($this->getExtensionSettings($this->getClassInfo($className)->getExtensionKey()));
+		$instance = $this->newObject($className, $constructorArguments);	
+		if ($classInfo->hasSetterDependencies()) {
+			$this->setterInjectionRegistry[]=array($instance, $classInfo->getSetterDependencies(), $level);
+		}		
+		if ($classInfo->hasInjectExtensionSettingsMethod() && $classInfo->getExtensionKey()) {
+			$instance->injectExtensionSettings($this->getExtensionSettings($classInfo->getExtensionKey()));
 		}
-		
-		if ($instance instanceof t3lib_Singleton) {
-					// it's a singleton, save the instance for later reuse
-				$this->instances[$className] = $instance;
-		}	
+		if ($classInfo->getIsSingleton()) {					
+				$this->singletonInstances[$className] = $instance;
+		}		
 		return $instance;		
-	}
+	}	
 	
 	/**
 	 * returns the extension settings from ext_conf_template
@@ -143,16 +152,7 @@ class Tx_Container_Container {
 			return array();
 		}
 		return $array;
-	}
-	
-	/**
-	 * TODO add real cyclic detecting based on call tree
-	 *  a 
-	 *  --b
-	 *  --c
-	 *  	--a //cyclic 
-	 *  	--b //non cyclic
-	 */
+	}	
 	
 	/**
 	 * returns a object of the given type, called with the constructor arguments.
@@ -161,7 +161,7 @@ class Tx_Container_Container {
 	 * @param string $className
 	 * @param array $constructorArguments
 	 */
-	protected function newObject($className, array $constructorArguments) {
+	private function newObject($className, array $constructorArguments) {
 		switch (count($constructorArguments)) {
 			case 0:
 				return new $className;
@@ -189,7 +189,7 @@ class Tx_Container_Container {
 	 * @param array $givenConstructorArguments
 	 * @return array
 	 */
-	protected function getConstructorArguments(array $requiredConstructorArgumentsInfos, array $givenConstructorArguments, $level) {
+	private function getConstructorArguments(array $requiredConstructorArgumentsInfos, array $givenConstructorArguments, $level) {
 		$parameters=array();
 		
 		foreach ($requiredConstructorArgumentsInfos as $k => $info) {
@@ -233,32 +233,47 @@ class Tx_Container_Container {
 	 * @param	string		Base class name to evaluate
 	 * @return	string		Final class name to instantiate with "new [classname]"
 	 */
-	protected function getClassNameXClass($className) {
+	private function getClassNameXClass($className) {
 		return (class_exists($className) && class_exists('ux_' . $className, false) ? self::getClassName('ux_' . $className) : $className);
 	}
 	
 	/**
-	 * does inject dependecies in the given methods
+	 * do inject dependecies to object $instance using the given methods
 	 * 
 	 * @param object $instance
 	 * @param array $setterMethods
+	 * @param integer $level
 	 */
-	protected function handleSetterInjection($instance, array $setterMethods) {
+	private function handleSetterInjection($instance, array $setterMethods, $level) {
 		foreach ($setterMethods as $method => $dependency) {
-			$instance-> $method ( $this->getInstanceFromClassName($dependency));
+			$instance-> $method ( $this->getInstanceFromClassName($dependency, array(), $level+1));
 		}
 	}
 	
 	/**
-	 * TODO - Level2 (database or filesystem based) cache + cache warmup + cache clear on cache clear in backend
-	 * 
+	 * Gets Classinfos for the className - using the cache and the factory
 	 * @param string $className
-	 * @return tx_container_reflectioninfo
+	 * @return Tx_Container_Classinfo
 	 */
-	protected function getClassInfo($className) {
-		if (!isset($this->level1ClassInfoCache[$className])) {
-			$this->level1ClassInfoCache[$className]= $this->classInfoFactory->buildClassInfoFromClassName($className);
+	private function getClassInfo($className) {
+		if (!$this->cache->has($className)) {
+			$this->cache->set($className, $this->classInfoFactory->buildClassInfoFromClassName($className));
 		}
-		return $this->level1ClassInfoCache[$className];	
+		return $this->cache->get($className);
 	}
+	
+	/**
+	 * does setter injection based on the data in $this->setterInjectionRegistry
+	 * Its done as long till no setters are left
+	 * @return void
+	 */
+	private function processSetterInjectionRegistry() {		
+		while (count($this->setterInjectionRegistry)>0) {
+			$currentSetterData = $this->setterInjectionRegistry;
+			$this->setterInjectionRegistry = array();
+			foreach ($currentSetterData as $setterInjectionData) {
+				$this->handleSetterInjection($setterInjectionData[0], $setterInjectionData[1], $setterInjectionData[2]);
+			}
+		}
+	}	
 }
