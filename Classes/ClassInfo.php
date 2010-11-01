@@ -6,7 +6,7 @@
  * 
  * @author Daniel Pötzinger
  */
-class Tx_Container_Classinfo {
+class Tx_Container_ClassInfo {
 	/**
 	 * The classname of the class where the infos belong to
 	 * @var string

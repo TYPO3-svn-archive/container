@@ -258,7 +258,7 @@ class Tx_Container_Container {
 	/**
 	 * Gets Classinfos for the className - using the cache and the factory
 	 * @param string $className
-	 * @return Tx_Container_Classinfo
+	 * @return Tx_Container_ClassInfo
 	 */
 	private function getClassInfo($className) {
 		if (!$this->cache->has($className)) {
