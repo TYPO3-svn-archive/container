@@ -1,7 +1,4 @@
 <?php
-
-require_once (t3lib_extMgm::extPath ( 'container' ) . 'Classes/ClassInfo.php');
-
 /**
  * TYPO3 Dependency Injection container
  * 
