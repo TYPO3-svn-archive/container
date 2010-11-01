@@ -222,7 +222,12 @@ class Tx_Container_Container {
 	protected function getClassName($className) {
 		if (isset($this->alternativeImplementation[$className])) {
 			$className = $this->alternativeImplementation[$className];
+		} 
+		
+		if (substr($className, -9) === 'Interface') {
+			$className = substr($className, 0, -9);
 		}
+
 		return $this->getClassNameXClass($className);
 	}
 	
