@@ -15,11 +15,18 @@ class Tx_Container_ClassInfo {
 	
 	/**
 	 * The constructor Dependencies for the class in the format:
-	 * 	 array( array('dependency' => <classname>,'defaultvalue' => <mixed>), ... )
+	 * 	 array(
+	 *     0 => array( <-- parameters for argument 1
+	 *       'name' => <arg name>, <-- name of argument
+	 *       'dependency' => <classname>, <-- if the argument is a class, the type of the argument
+	 *       'defaultvalue' => <mixed>) <-- if the argument is optional, its default value
+	 *     ),
+	 *     1 => ...
+	 *   )
 	 * 
 	 * @var array
 	 */
-	private $constructorDependencies;
+	private $constructorArguments;
 	
 	/**
 	 * All setter injections in the format
@@ -57,14 +64,14 @@ class Tx_Container_ClassInfo {
 	/**
 	 * 
 	 * @param string $className
-	 * @param array $constructorDependencies
+	 * @param array $constructorArguments
 	 * @param array $setterDependencies
 	 * @param boolean if the class has a method "injectExtensionSettings"
 	 */
-	public function __construct($className, $extensionKey, array $constructorDependencies, array $setterDependencies, $hasInjectExtensionSettingsMethod=FALSE, array $parents=array(), $isSingleton=FALSE) {
+	public function __construct($className, $extensionKey, array $constructorArguments, array $setterDependencies, $hasInjectExtensionSettingsMethod=FALSE, array $parents=array(), $isSingleton=FALSE) {
 		$this->className = $className;
 		$this->setterDependencies = $setterDependencies;
-		$this->constructorDependencies = $constructorDependencies;
+		$this->constructorArguments = $constructorArguments;
 		$this->extensionKey = $extensionKey;
 		$this->hasInjectExtensionSettingsMethod=$hasInjectExtensionSettingsMethod;
 		$this->parents=$parents;
@@ -79,10 +86,10 @@ class Tx_Container_ClassInfo {
 	}
 
 	/**
-	 * @return the $constructorDependencies
+	 * @return the $constructorArguments
 	 */
-	public function getConstructorDependencies() {
-		return $this->constructorDependencies;
+	public function getConstructorArguments() {
+		return $this->constructorArguments;
 	}
 
 	/**

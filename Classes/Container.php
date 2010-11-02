@@ -121,11 +121,16 @@ class Tx_Container_Container {
 		}
 
 		$className = self::getClassName($className);
+
 		$classInfo = $this->getClassInfo($className);
 
-		$requiredConstructorArguments = $classInfo->getConstructorDependencies();
-		$constructorArguments = $this->getConstructorArguments($requiredConstructorArguments, $givenConstructorArguments,$level);
+		$constructorArguments = $this->getConstructorArguments($classInfo->getConstructorArguments(), $givenConstructorArguments, $level);
 		$instance = $this->newObject($className, $constructorArguments);
+
+		if ($level > 0 && !($instance instanceof t3lib_Singleton)) {
+			throw new Exception($className . ' is not a singleton, but was injected into a class.');
+		}
+
 		if ($classInfo->hasSetterDependencies()) {
 			$this->setterInjectionRegistry[]=array($instance, $classInfo->getSetterDependencies(), $level);
 		}
@@ -182,30 +187,30 @@ class Tx_Container_Container {
 	/**
 	 * gets array of parameter that can be used to call a constructor
 	 *
-	 * @param ReflectionParameter[] $requiredConstructorArguments
+	 * @param array $constructorArgumentInformation
 	 * @param array $givenConstructorArguments
 	 * @return array
 	 */
-	private function getConstructorArguments(array $requiredConstructorArgumentsInfos, array $givenConstructorArguments, $level) {
+	private function getConstructorArguments(array $constructorArgumentInformation, array $givenConstructorArguments, $level) {
 		$parameters=array();
-
-		foreach ($requiredConstructorArgumentsInfos as $k => $info) {
-
-			if (isset($givenConstructorArguments[$k]) && !is_null($givenConstructorArguments[$k])) {
-				$parameter = $givenConstructorArguments[$k];
-			}
-			elseif (isset($info['defaultValue'])) {
-				$parameter = $info['defaultValue'];
-			}
-			elseif (isset($info['dependency'])) {
-				$parameter = $this->getInstanceFromClassName($info['dependency'], array(), $level+1);
-			}
-			else {
+		foreach ($constructorArgumentInformation as $argumentInformation) {
+			$argumentName = $argumentInformation['name'];
+			
+			if (isset($argumentInformation['dependency'])) {
+				// Inject parameter
+				$parameter = $this->getInstanceFromClassName($argumentInformation['dependency'], array(), $level+1);
+			} elseif (count($givenConstructorArguments)) {
+				// we have a value to set
+				$parameter = array_shift($givenConstructorArguments);
+			} elseif (isset($argumentInformation['defaultValue'])) {
+				// no value to set anymore, we take default value
+				$parameter = $argumentInformation['defaultValue'];
+			} else {
 				throw new InvalidArgumentException('not a correct info array of constructor dependencies was passed!');
 			}
 			$parameters[] = $parameter;
 		}
-		return 	$parameters;
+		return $parameters;
 	}
 
 

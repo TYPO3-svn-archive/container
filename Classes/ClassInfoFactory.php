@@ -24,7 +24,7 @@ class Tx_Container_ClassInfoFactory {
 		} catch ( Exception $e ) {
 			throw new Exception ( 'Could not analyse class:' . $className . ' maybe not loaded or no autoloader?' );
 		}
-		$cd = $this->getConstructorDependencies ( $reflectedClass );
+		$cd = $this->getConstructorArguments($reflectedClass);
 		$is = $this->getSetterDependencies ( $reflectedClass );
 		$key = $this->getExtensionKey ( $className );
 		$parents = $this->getParents ( $reflectedClass );
@@ -70,24 +70,26 @@ class Tx_Container_ClassInfoFactory {
 	 * @param ReflectionClass $reflectedClass
 	 * @returns array of parameter infos for constructor  k=>dependency,defaultvalue
 	 */
-	private function getConstructorDependencies(ReflectionClass $reflectedClass) {
-		$reflectionMethod = $reflectedClass->getConstructor ();
-		if (! is_object ( $reflectionMethod )) {
-			return array ();
+	private function getConstructorArguments(ReflectionClass $reflectedClass) {
+		$reflectionMethod = $reflectedClass->getConstructor();
+		if (!is_object($reflectionMethod)) {
+			return array();
 		}
-		$result = array ();
-		foreach ( $reflectionMethod->getParameters () as $k => $reflectionParameter ) {
+		$result = array();
+		foreach ($reflectionMethod->getParameters() as $reflectionParameter) {
 			/* @var $reflectionParameter ReflectionParameter */
-			$info = array ();
-			if ($reflectionParameter->getClass ()) {
-				$info ['dependency'] = $reflectionParameter->getClass ()->getName ();
+			$info = array();
+
+			$info['name'] = $reflectionParameter->getName();
+
+			if ($reflectionParameter->getClass()) {
+				$info ['dependency'] = $reflectionParameter->getClass()->getName();
 			}
-			if ($reflectionParameter->isOptional ()) {
-				$info ['defaultValue'] = $reflectionParameter->getDefaultValue ();
+			if ($reflectionParameter->isOptional()) {
+				$info ['defaultValue'] = $reflectionParameter->getDefaultValue();
 			}
-			if (count($info) > 0) {
-				$result [$k] = $info;
-			}
+
+			$result[] = $info;
 		}
 		return $result;
 	}
