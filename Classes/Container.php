@@ -137,7 +137,7 @@ class Tx_Container_Container {
 		//if ($classInfo->hasInjectExtensionSettingsMethod() && $classInfo->getExtensionKey()) {
 		//	$instance->injectExtensionSettings($this->getExtensionSettings($classInfo->getExtensionKey()));
 		//}
-		if ($classInfo->getIsSingleton()) {
+		if ($instance instanceof t3lib_Singleton) {
 				$this->singletonInstances[$className] = $instance;
 		}
 		return $instance;
@@ -164,24 +164,8 @@ class Tx_Container_Container {
 	 * @param array $constructorArguments
 	 */
 	private function newObject($className, array $constructorArguments) {
-		switch (count($constructorArguments)) {
-			case 0:
-				return new $className;
-			break;
-			case 1:
-				return new $className($constructorArguments[0]);
-			break;
-			case 2:
-				return new $className($constructorArguments[0], $constructorArguments[1]);
-			break;
-			case 3:
-				return new $className($constructorArguments[0], $constructorArguments[1], $constructorArguments[2]);
-			break;
-			default:
-				$reflectedClass = new ReflectionClass($className);
-				return $reflectedClass->newInstanceArgs($constructorArguments);
-			break;
-		}
+		array_unshift($constructorArguments, $className);
+		return call_user_func_array(array('t3lib_div', 'makeInstance'), $constructorArguments);
 	}
 
 	/**
@@ -195,13 +179,13 @@ class Tx_Container_Container {
 		$parameters=array();
 		foreach ($constructorArgumentInformation as $argumentInformation) {
 			$argumentName = $argumentInformation['name'];
-			
-			if (isset($argumentInformation['dependency'])) {
-				// Inject parameter
-				$parameter = $this->getInstanceFromClassName($argumentInformation['dependency'], array(), $level+1);
-			} elseif (count($givenConstructorArguments)) {
+
+			if (count($givenConstructorArguments)) {
 				// we have a value to set
 				$parameter = array_shift($givenConstructorArguments);
+			} elseif (isset($argumentInformation['dependency'])) {
+				// Inject parameter
+				$parameter = $this->getInstanceFromClassName($argumentInformation['dependency'], array(), $level+1);
 			} elseif (isset($argumentInformation['defaultValue'])) {
 				// no value to set anymore, we take default value
 				$parameter = $argumentInformation['defaultValue'];
