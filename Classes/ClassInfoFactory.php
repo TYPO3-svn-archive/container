@@ -78,7 +78,6 @@ class Tx_Container_ClassInfoFactory {
 		$result = array ();
 		foreach ( $reflectionMethod->getParameters () as $k => $reflectionParameter ) {
 			/* @var $reflectionParameter ReflectionParameter */
-
 			$info = array ();
 			if ($reflectionParameter->getClass ()) {
 				$info ['dependency'] = $reflectionParameter->getClass ()->getName ();
@@ -86,7 +85,9 @@ class Tx_Container_ClassInfoFactory {
 			if ($reflectionParameter->isOptional ()) {
 				$info ['defaultValue'] = $reflectionParameter->getDefaultValue ();
 			}
-			$result [$k] = $info;
+			if (count($info) > 0) {
+				$result [$k] = $info;
+			}
 		}
 		return $result;
 	}
