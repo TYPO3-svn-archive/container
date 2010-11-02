@@ -129,9 +129,9 @@ class Tx_Container_Container {
 		if ($classInfo->hasSetterDependencies()) {
 			$this->setterInjectionRegistry[]=array($instance, $classInfo->getSetterDependencies(), $level);
 		}
-		if ($classInfo->hasInjectExtensionSettingsMethod() && $classInfo->getExtensionKey()) {
-			$instance->injectExtensionSettings($this->getExtensionSettings($classInfo->getExtensionKey()));
-		}
+		//if ($classInfo->hasInjectExtensionSettingsMethod() && $classInfo->getExtensionKey()) {
+		//	$instance->injectExtensionSettings($this->getExtensionSettings($classInfo->getExtensionKey()));
+		//}
 		if ($classInfo->getIsSingleton()) {
 				$this->singletonInstances[$className] = $instance;
 		}
